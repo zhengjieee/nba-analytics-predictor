@@ -1,12 +1,17 @@
 """
-Collect current NBA players career game logs.
-
 The script selects 10 current roster players per team using an activity score that blends 
 current-season and previous-season usage so star players are still selected if they are
 currently injured or have missed time.
 
 It then downloads all regular season player game logs from the earliest selected debut 
 season through the current season.
+
+There are also three additional raw lookup tables:
+1. player_info.csv is built from NBA player profile metadata for the selected 300 players, including
+height, weight, position, career years, and draft information. 
+2. team_stats.csv is built from season-level team totals and win percentages. 
+3. opponent_defense.csv is a compact defensive-context lookup derived from team_stats.csv, including
+defensive rating, estimated defensive rating, pace, possessions, and win percentage.
 """
 
 from __future__ import annotations
