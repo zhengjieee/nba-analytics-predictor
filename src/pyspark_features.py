@@ -17,6 +17,8 @@ from pyspark.sql.types import DateType, DoubleType, IntegerType
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_LOGS_PATH = PROJECT_ROOT / "data" / "raw" / "player_game_logs.csv"
+PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
+PYSPARK_FEATURES_PATH = PROCESSED_DIR / "features_pyspark.parquet"
 ROLLING_TARGETS = ["FANTASY_PTS", "PTS", "REB", "AST", "STL", "BLK", "TOV", "3PM"]
 ROLLING_WINDOWS = [5, 10, 20]
 
@@ -273,6 +275,36 @@ def add_all_time_series_features(
 
 
 def print_time_series_feature_summary(df: DataFrame) -> None:
+    feature_columns = get_time_series_feature_columns(df)
+    rolling_columns = [
+        column
+        for column in feature_columns
+        if "_rolling_" in column and (column.endswith("_avg") or column.endswith("_std"))
+    ]
+    min_max_columns = [
+        column
+        for column in feature_columns
+        if (("_season_" in column or "_career_" in column) and (column.endswith("_min") or column.endswith("_max")))
+    ]
+    cumulative_columns = [column for column in feature_columns if column.endswith("_season_cumulative_total")]
+    lag_columns = [column for column in feature_columns if column.endswith("_lag_1")]
+    change_columns = [column for column in feature_columns if column.endswith("_change_from_previous")]
+
+    print("\nTime-Series Feature Checks")
+    print("--------------------------")
+    print(f"Rolling avg/std feature columns: {len(rolling_columns)}")
+    print(f"Season/career min/max feature columns: {len(min_max_columns)}")
+    print(f"Cumulative season total feature columns: {len(cumulative_columns)}")
+    print(f"Lag-1 feature columns: {len(lag_columns)}")
+    print(f"Change-from-previous feature columns: {len(change_columns)}")
+    print(f"Total planned PySpark feature columns: {len(feature_columns)}")
+    print(f"Total DataFrame columns: {len(df.columns)}")
+    print("Sample time-series feature columns:")
+    for column in feature_columns[:12]:
+        print(f"- {column}")
+
+
+def get_time_series_feature_columns(df: DataFrame) -> list[str]:
     rolling_columns = [
         column
         for column in df.columns
@@ -286,25 +318,75 @@ def print_time_series_feature_summary(df: DataFrame) -> None:
     cumulative_columns = [column for column in df.columns if column.endswith("_season_cumulative_total")]
     lag_columns = [column for column in df.columns if column.endswith("_lag_1")]
     change_columns = [column for column in df.columns if column.endswith("_change_from_previous")]
+    return rolling_columns + min_max_columns + cumulative_columns + lag_columns + change_columns
 
-    print("\nTime-Series Feature Checks")
-    print("--------------------------")
-    print(f"Rolling avg/std feature columns: {len(rolling_columns)}")
-    print(f"Season/career min/max feature columns: {len(min_max_columns)}")
-    print(f"Cumulative season total feature columns: {len(cumulative_columns)}")
-    print(f"Lag-1 feature columns: {len(lag_columns)}")
-    print(f"Change-from-previous feature columns: {len(change_columns)}")
-    print(f"Total planned PySpark feature columns: {len(rolling_columns) + len(min_max_columns) + len(cumulative_columns) + len(lag_columns) + len(change_columns)}")
-    print(f"Total DataFrame columns: {len(df.columns)}")
-    print("Sample time-series feature columns:")
-    for column in (rolling_columns + min_max_columns + cumulative_columns + lag_columns + change_columns)[:12]:
-        print(f"- {column}")
+
+def validate_feature_quality(df: DataFrame) -> None:
+    feature_columns = get_time_series_feature_columns(df)
+    null_expressions = [
+        F.sum(F.when(F.col(column).isNull(), 1).otherwise(0)).alias(column)
+        for column in feature_columns
+    ]
+    null_counts = df.agg(*null_expressions).collect()[0].asDict()
+    total_rows = df.count()
+
+    print("\nFeature Quality")
+    print("---------------")
+    print(f"Rows checked: {total_rows:,}")
+    print(f"Feature columns checked: {len(feature_columns)}")
+    print("Highest null-count feature columns:")
+    for column, count in sorted(null_counts.items(), key=lambda item: item[1], reverse=True)[:12]:
+        print(f"- {column}: {count:,}")
+
+    range_columns = [
+        "pts_rolling_5g_avg",
+        "pts_rolling_20g_avg",
+        "fantasy_pts_rolling_5g_avg",
+        "pts_season_min",
+        "pts_season_max",
+        "pts_lag_1",
+        "pts_change_from_previous",
+        "3pm_rolling_5g_avg",
+    ]
+    existing_range_columns = [column for column in range_columns if column in df.columns]
+    range_expressions = []
+    for column in existing_range_columns:
+        range_expressions.extend(
+            [
+                F.min(F.col(column)).alias(f"{column}_min"),
+                F.max(F.col(column)).alias(f"{column}_max"),
+                F.avg(F.col(column)).alias(f"{column}_avg"),
+            ]
+        )
+    ranges = df.agg(*range_expressions).collect()[0].asDict()
+
+    print("\nSelected Feature Ranges")
+    print("-----------------------")
+    for column in existing_range_columns:
+        print(
+            f"{column}: "
+            f"min={ranges[f'{column}_min']}, "
+            f"max={ranges[f'{column}_max']}, "
+            f"avg={ranges[f'{column}_avg']}"
+        )
+
+
+def write_features_parquet(df: DataFrame, output_path: Path = PYSPARK_FEATURES_PATH) -> None:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    (
+        df.write.mode("overwrite")
+        .option("compression", "snappy")
+        .parquet(str(output_path))
+    )
+    print(f"\nSaved PySpark features to {output_path}")
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Load and validate NBA player game logs with PySpark.")
     parser.add_argument("--input", type=Path, default=RAW_LOGS_PATH)
+    parser.add_argument("--output", type=Path, default=PYSPARK_FEATURES_PATH)
     parser.add_argument("--partitions", type=int, default=8)
+    parser.add_argument("--no-export", action="store_true", help="Run validation without writing Parquet output.")
     return parser.parse_args()
 
 
@@ -319,6 +401,9 @@ def main() -> None:
         partitioned_logs = verify_player_partitioning(logs, partitions=args.partitions)
         featured_logs = add_all_time_series_features(partitioned_logs)
         print_time_series_feature_summary(featured_logs)
+        validate_feature_quality(featured_logs)
+        if not args.no_export:
+            write_features_parquet(featured_logs, args.output)
     finally:
         spark.stop()
 

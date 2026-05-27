@@ -13,6 +13,7 @@ from src.pyspark_features import (
     add_historical_min_max_features,
     add_lag_features,
     add_rolling_average_std_features,
+    get_time_series_feature_columns,
 )
 
 
@@ -138,6 +139,7 @@ class RollingFeatureTests(unittest.TestCase):
         added_columns = set(result.columns) - set(df.columns)
 
         self.assertEqual(len(added_columns), 22)
+        self.assertEqual(len(get_time_series_feature_columns(result)), 22)
 
 
 if __name__ == "__main__":
