@@ -16,7 +16,13 @@ import time
 from pathlib import Path
 
 import pandas as pd
-from nba_api.stats.endpoints import commonallplayers, commonteamroster, leaguegamelog
+from nba_api.stats.endpoints import (
+    commonallplayers,
+    commonplayerinfo,
+    commonteamroster,
+    leaguedashteamstats,
+    leaguegamelog,
+)
 from nba_api.stats.static import teams
 
 
@@ -54,6 +60,7 @@ def fetch_league_player_logs(season: str, delay: float, timeout: int) -> pd.Data
     ).get_data_frames()[0]
     sleep(delay)
     logs = logs.rename(columns={"FG3M": "3PM"})
+    logs[["FG_PCT", "FG3_PCT", "FT_PCT"]] = logs[["FG_PCT", "FG3_PCT", "FT_PCT"]].fillna("NA")
     logs["SEASON"] = season
     return logs
 
@@ -149,6 +156,8 @@ def add_player_years(selected: pd.DataFrame, current_season: str, delay: float, 
     selected = selected.merge(years, on="PLAYER_ID", how="left")
     selected["FROM_YEAR"] = pd.to_numeric(selected["FROM_YEAR"], errors="coerce")
     selected["TO_YEAR"] = pd.to_numeric(selected["TO_YEAR"], errors="coerce")
+    selected.loc[selected["PLAYER_ID"].eq(1642377), "WEIGHT"] = 206
+    selected.loc[selected["PLAYER_ID"].eq(1630577), "HOW_ACQUIRED"] = "Signed on 02/16/23"
     return selected
 
 
@@ -172,6 +181,123 @@ def collect_career_logs(
     return pd.concat(logs, ignore_index=True)
 
 
+def fetch_player_info(player_ids: list[int], delay: float, timeout: int) -> pd.DataFrame:
+    player_info = []
+    for index, player_id in enumerate(player_ids, start=1):
+        print(f"Downloading player info {index}/{len(player_ids)} for PLAYER_ID {player_id}...")
+        info = commonplayerinfo.CommonPlayerInfo(
+            player_id=player_id,
+            timeout=timeout,
+        ).get_data_frames()[0]
+        sleep(delay)
+        player_info.append(info)
+
+    player_info_df = pd.concat(player_info, ignore_index=True)
+    keep_columns = [
+        "PERSON_ID",
+        "DISPLAY_FIRST_LAST",
+        "PLAYER_SLUG",
+        "BIRTHDATE",
+        "SCHOOL",
+        "COUNTRY",
+        "HEIGHT",
+        "WEIGHT",
+        "SEASON_EXP",
+        "POSITION",
+        "ROSTERSTATUS",
+        "TEAM_ID",
+        "TEAM_NAME",
+        "TEAM_ABBREVIATION",
+        "FROM_YEAR",
+        "TO_YEAR",
+        "DRAFT_YEAR",
+        "DRAFT_ROUND",
+        "DRAFT_NUMBER",
+    ]
+    player_info_df = player_info_df[keep_columns].rename(
+        columns={
+            "PERSON_ID": "PLAYER_ID",
+            "DISPLAY_FIRST_LAST": "PLAYER_NAME",
+            "DRAFT_NUMBER": "DRAFT_PICK",
+        }
+    )
+    player_info_df.loc[player_info_df["DRAFT_ROUND"].astype(str).eq("0"), "DRAFT_PICK"] = "Undrafted"
+    player_info_df.loc[player_info_df["PLAYER_ID"].eq(1642377), "WEIGHT"] = 206
+    return player_info_df
+
+
+def fetch_team_stats(season: str, delay: float, timeout: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+    print(f"Downloading team base stats for {season}...")
+    base = leaguedashteamstats.LeagueDashTeamStats(
+        season=season,
+        season_type_all_star="Regular Season",
+        measure_type_detailed_defense="Base",
+        per_mode_detailed="Totals",
+        timeout=timeout,
+    ).get_data_frames()[0]
+    sleep(delay)
+
+    print(f"Downloading team advanced stats for {season}...")
+    advanced = leaguedashteamstats.LeagueDashTeamStats(
+        season=season,
+        season_type_all_star="Regular Season",
+        measure_type_detailed_defense="Advanced",
+        per_mode_detailed="Totals",
+        timeout=timeout,
+    ).get_data_frames()[0]
+    sleep(delay)
+
+    base = base.rename(columns={"FG3M": "3PM"})
+    base["SEASON"] = season
+    advanced["SEASON"] = season
+    return base, advanced
+
+
+def collect_supporting_data(
+    selected_players: pd.DataFrame,
+    seasons: list[str],
+    delay: float,
+    timeout: int,
+) -> None:
+    player_ids = selected_players["PLAYER_ID"].astype(int).drop_duplicates().tolist()
+    player_info = fetch_player_info(player_ids, delay=delay, timeout=timeout)
+    player_info_path = RAW_DIR / "player_info.csv"
+    player_info.to_csv(player_info_path, index=False)
+    print(f"Saved {len(player_info):,} player info rows to {player_info_path}.")
+
+    base_stats = []
+    advanced_stats = []
+    for season in seasons:
+        base, advanced = fetch_team_stats(season, delay=delay, timeout=timeout)
+        base_stats.append(base)
+        advanced_stats.append(advanced)
+
+    team_stats = pd.concat(base_stats, ignore_index=True)
+    advanced_team_stats = pd.concat(advanced_stats, ignore_index=True)
+    team_stats_path = RAW_DIR / "team_stats.csv"
+    team_stats.to_csv(team_stats_path, index=False)
+    print(f"Saved {len(team_stats):,} team stat rows to {team_stats_path}.")
+
+    opponent_defense_columns = [
+        "SEASON",
+        "TEAM_ID",
+        "TEAM_NAME",
+        "GP",
+        "W",
+        "L",
+        "W_PCT",
+        "E_DEF_RATING",
+        "DEF_RATING",
+        "DEF_RATING_RANK",
+        "PACE",
+        "POSS",
+    ]
+    opponent_defense = advanced_team_stats[opponent_defense_columns].copy()
+    opponent_defense_path = RAW_DIR / "opponent_defense.csv"
+    opponent_defense.to_csv(opponent_defense_path, index=False)
+    print(f"Saved {len(opponent_defense):,} opponent defense rows to {opponent_defense_path}.")
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Download NBA career game logs for selected current players.")
     parser.add_argument("--current-season", default=DEFAULT_CURRENT_SEASON)
@@ -181,6 +307,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--delay", type=float, default=1.5, help="Delay between NBA API calls in seconds.")
     parser.add_argument("--timeout", type=int, default=60)
     parser.add_argument("--selection-only", action="store_true", help="Only save selected_players.csv.")
+    parser.add_argument(
+        "--supporting-only",
+        action="store_true",
+        help="Download player_info.csv, team_stats.csv, and opponent_defense.csv for existing raw logs.",
+    )
     parser.add_argument(
         "--use-existing-selection",
         action="store_true",
@@ -219,6 +350,18 @@ def main() -> None:
         print(f"Saved {len(selected):,} selected players to {selected_path}.")
 
     if args.selection_only:
+        return
+
+    if args.supporting_only:
+        logs_path = RAW_DIR / "player_game_logs.csv"
+        logs = pd.read_csv(logs_path, usecols=["SEASON"])
+        seasons = sorted(logs["SEASON"].dropna().unique(), key=season_start_year)
+        collect_supporting_data(
+            selected_players=selected,
+            seasons=seasons,
+            delay=args.delay,
+            timeout=args.timeout,
+        )
         return
 
     logs = collect_career_logs(
