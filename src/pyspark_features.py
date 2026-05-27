@@ -137,6 +137,26 @@ def rolling_feature_name(target: str, window_size: int, statistic: str) -> str:
     return f"{normalized_target}_rolling_{window_size}g_{statistic}"
 
 
+def historical_feature_name(target: str, scope: str, statistic: str) -> str:
+    normalized_target = target.lower()
+    return f"{normalized_target}_{scope}_{statistic}"
+
+
+def cumulative_feature_name(target: str) -> str:
+    normalized_target = target.lower()
+    return f"{normalized_target}_season_cumulative_total"
+
+
+def lag_feature_name(target: str) -> str:
+    normalized_target = target.lower()
+    return f"{normalized_target}_lag_1"
+
+
+def change_feature_name(target: str) -> str:
+    normalized_target = target.lower()
+    return f"{normalized_target}_change_from_previous"
+
+
 def add_rolling_average_std_features(
     df: DataFrame,
     targets: list[str] | None = None,
@@ -168,18 +188,116 @@ def add_rolling_average_std_features(
     return featured
 
 
-def print_rolling_feature_summary(df: DataFrame) -> None:
+def add_historical_min_max_features(
+    df: DataFrame,
+    targets: list[str] | None = None,
+) -> DataFrame:
+    """Add prior season and prior career min/max features for each target."""
+    targets = targets or ROLLING_TARGETS
+    season_ordered = Window.partitionBy("PLAYER_ID", "SEASON").orderBy("GAME_DATE", "GAME_ID")
+    career_ordered = Window.partitionBy("PLAYER_ID").orderBy("GAME_DATE", "GAME_ID")
+    prior_season_games = season_ordered.rowsBetween(Window.unboundedPreceding, -1)
+    prior_career_games = career_ordered.rowsBetween(Window.unboundedPreceding, -1)
+
+    featured = df
+    for target in targets:
+        featured = featured.withColumn(
+            historical_feature_name(target, "season", "min"),
+            F.min(F.col(target)).over(prior_season_games),
+        )
+        featured = featured.withColumn(
+            historical_feature_name(target, "season", "max"),
+            F.max(F.col(target)).over(prior_season_games),
+        )
+        featured = featured.withColumn(
+            historical_feature_name(target, "career", "min"),
+            F.min(F.col(target)).over(prior_career_games),
+        )
+        featured = featured.withColumn(
+            historical_feature_name(target, "career", "max"),
+            F.max(F.col(target)).over(prior_career_games),
+        )
+
+    return featured
+
+
+def add_cumulative_season_total_features(
+    df: DataFrame,
+    targets: list[str] | None = None,
+) -> DataFrame:
+    """Add prior cumulative season totals for each target."""
+    targets = targets or ROLLING_TARGETS
+    ordered = Window.partitionBy("PLAYER_ID", "SEASON").orderBy("GAME_DATE", "GAME_ID")
+    prior_season_games = ordered.rowsBetween(Window.unboundedPreceding, -1)
+
+    featured = df
+    for target in targets:
+        featured = featured.withColumn(
+            cumulative_feature_name(target),
+            F.sum(F.col(target)).over(prior_season_games),
+        )
+
+    return featured
+
+
+def add_lag_features(
+    df: DataFrame,
+    targets: list[str] | None = None,
+) -> DataFrame:
+    """Add lag-1 and current-minus-previous features for each target."""
+    targets = targets or ROLLING_TARGETS
+    ordered = Window.partitionBy("PLAYER_ID").orderBy("GAME_DATE", "GAME_ID")
+
+    featured = df
+    for target in targets:
+        lag_column = lag_feature_name(target)
+        featured = featured.withColumn(lag_column, F.lag(F.col(target), 1).over(ordered))
+        featured = featured.withColumn(change_feature_name(target), F.col(target) - F.col(lag_column))
+
+    return featured
+
+
+def add_all_time_series_features(
+    df: DataFrame,
+    targets: list[str] | None = None,
+    windows: list[int] | None = None,
+) -> DataFrame:
+    """Add all planned PySpark time-series features."""
+    targets = targets or ROLLING_TARGETS
+    windows = windows or ROLLING_WINDOWS
+
+    featured = add_rolling_average_std_features(df, targets=targets, windows=windows)
+    featured = add_historical_min_max_features(featured, targets=targets)
+    featured = add_cumulative_season_total_features(featured, targets=targets)
+    return add_lag_features(featured, targets=targets)
+
+
+def print_time_series_feature_summary(df: DataFrame) -> None:
     rolling_columns = [
         column
         for column in df.columns
         if "_rolling_" in column and (column.endswith("_avg") or column.endswith("_std"))
     ]
-    print("\nRolling Feature Checks")
-    print("----------------------")
+    min_max_columns = [
+        column
+        for column in df.columns
+        if (("_season_" in column or "_career_" in column) and (column.endswith("_min") or column.endswith("_max")))
+    ]
+    cumulative_columns = [column for column in df.columns if column.endswith("_season_cumulative_total")]
+    lag_columns = [column for column in df.columns if column.endswith("_lag_1")]
+    change_columns = [column for column in df.columns if column.endswith("_change_from_previous")]
+
+    print("\nTime-Series Feature Checks")
+    print("--------------------------")
     print(f"Rolling avg/std feature columns: {len(rolling_columns)}")
-    print(f"Expected rolling avg/std feature columns: {len(ROLLING_TARGETS) * len(ROLLING_WINDOWS) * 2}")
-    print("Sample rolling feature columns:")
-    for column in rolling_columns[:12]:
+    print(f"Season/career min/max feature columns: {len(min_max_columns)}")
+    print(f"Cumulative season total feature columns: {len(cumulative_columns)}")
+    print(f"Lag-1 feature columns: {len(lag_columns)}")
+    print(f"Change-from-previous feature columns: {len(change_columns)}")
+    print(f"Total planned PySpark feature columns: {len(rolling_columns) + len(min_max_columns) + len(cumulative_columns) + len(lag_columns) + len(change_columns)}")
+    print(f"Total DataFrame columns: {len(df.columns)}")
+    print("Sample time-series feature columns:")
+    for column in (rolling_columns + min_max_columns + cumulative_columns + lag_columns + change_columns)[:12]:
         print(f"- {column}")
 
 
@@ -199,8 +317,8 @@ def main() -> None:
         logs = load_player_game_logs(spark, args.input)
         print_schema_summary(logs)
         partitioned_logs = verify_player_partitioning(logs, partitions=args.partitions)
-        featured_logs = add_rolling_average_std_features(partitioned_logs)
-        print_rolling_feature_summary(featured_logs)
+        featured_logs = add_all_time_series_features(partitioned_logs)
+        print_time_series_feature_summary(featured_logs)
     finally:
         spark.stop()
 
