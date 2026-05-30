@@ -19,7 +19,8 @@ import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-FEATURES_FULL_PATH = PROCESSED_DIR / "features_full.parquet"
+FEATURES_DIR = PROCESSED_DIR / "features"
+FEATURES_FULL_PATH = FEATURES_DIR / "features_full.parquet"
 MODELLING_DIR = PROCESSED_DIR / "modelling"
 SPLIT_DIR = MODELLING_DIR / "split"
 

@@ -20,11 +20,12 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_DIR = PROJECT_ROOT / "data" / "raw"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-PYSPARK_FEATURES_PATH = PROCESSED_DIR / "features_pyspark.parquet"
+FEATURES_DIR = PROCESSED_DIR / "features"
+PYSPARK_FEATURES_PATH = FEATURES_DIR / "features_pyspark.parquet"
 PLAYER_INFO_PATH = RAW_DIR / "player_info.csv"
 OPPONENT_DEFENSE_PATH = RAW_DIR / "opponent_defense.csv"
-PLAYER_INFO_FEATURES_PATH = PROCESSED_DIR / "features_player_info.parquet"
-FEATURES_FULL_PATH = PROCESSED_DIR / "features_full.parquet"
+PLAYER_INFO_FEATURES_PATH = FEATURES_DIR / "features_player_info.parquet"
+FEATURES_FULL_PATH = FEATURES_DIR / "features_full.parquet"
 
 TEAM_ABBREVIATION_TO_ID = {
     "ATL": 1610612737,

@@ -27,6 +27,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.prepare_modelling import MODELLING_DIR, SPLIT_DIR, TARGET_COLUMNS
 
 MODELS_DIR = PROJECT_ROOT / "models"
+TEST_PREDICTIONS_DIR = MODELLING_DIR / "test_predictions"
 PRIMARY_TARGET = "FANTASY_PTS"
 
 
@@ -126,7 +127,7 @@ def train_all_targets(
 def write_training_outputs(
     metrics: pd.DataFrame,
     predictions: pd.DataFrame,
-    output_dir: Path = MODELLING_DIR,
+    output_dir: Path = TEST_PREDICTIONS_DIR,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     predictions.to_parquet(output_dir / "model_predictions.parquet", index=False)
@@ -137,7 +138,7 @@ def write_training_outputs(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train baseline and XGBoost models for NBA targets.")
     parser.add_argument("--input-dir", type=Path, default=SPLIT_DIR)
-    parser.add_argument("--output-dir", type=Path, default=MODELLING_DIR)
+    parser.add_argument("--output-dir", type=Path, default=TEST_PREDICTIONS_DIR)
     parser.add_argument("--models-dir", type=Path, default=MODELS_DIR)
     parser.add_argument("--no-export", action="store_true")
     return parser.parse_args()

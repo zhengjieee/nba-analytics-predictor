@@ -18,7 +18,8 @@ from pyspark.sql.types import DateType, DoubleType, IntegerType
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 RAW_LOGS_PATH = PROJECT_ROOT / "data" / "raw" / "player_game_logs.csv"
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
-PYSPARK_FEATURES_PATH = PROCESSED_DIR / "features_pyspark.parquet"
+FEATURES_DIR = PROCESSED_DIR / "features"
+PYSPARK_FEATURES_PATH = FEATURES_DIR / "features_pyspark.parquet"
 ROLLING_TARGETS = ["FANTASY_PTS", "PTS", "REB", "AST", "STL", "BLK", "TOV", "3PM"]
 ROLLING_WINDOWS = [5, 10, 20]
 
