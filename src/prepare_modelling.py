@@ -21,6 +21,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 FEATURES_FULL_PATH = PROCESSED_DIR / "features_full.parquet"
 MODELLING_DIR = PROCESSED_DIR / "modelling"
+SPLIT_DIR = MODELLING_DIR / "split"
 
 TARGET_COLUMNS = ["FANTASY_PTS", "PTS", "REB", "AST", "STL", "BLK", "TOV", "3PM"]
 
@@ -180,7 +181,7 @@ def write_modelling_data(
     y_train: pd.DataFrame,
     y_test: pd.DataFrame,
     metadata: dict[str, object],
-    output_dir: Path = MODELLING_DIR,
+    output_dir: Path = SPLIT_DIR,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     x_train.to_parquet(output_dir / "X_train.parquet", index=False)
@@ -194,7 +195,7 @@ def write_modelling_data(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Prepare time-aware train/test matrices for modelling.")
     parser.add_argument("--features", type=Path, default=FEATURES_FULL_PATH)
-    parser.add_argument("--output-dir", type=Path, default=MODELLING_DIR)
+    parser.add_argument("--output-dir", type=Path, default=SPLIT_DIR)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--no-export", action="store_true")
     return parser.parse_args()

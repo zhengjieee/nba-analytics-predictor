@@ -24,13 +24,13 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from src.prepare_modelling import MODELLING_DIR, TARGET_COLUMNS
+from src.prepare_modelling import MODELLING_DIR, SPLIT_DIR, TARGET_COLUMNS
 
 MODELS_DIR = PROJECT_ROOT / "models"
 PRIMARY_TARGET = "FANTASY_PTS"
 
 
-def load_modelling_matrices(input_dir: Path = MODELLING_DIR) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_modelling_matrices(input_dir: Path = SPLIT_DIR) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     x_train = pd.read_parquet(input_dir / "X_train.parquet")
     x_test = pd.read_parquet(input_dir / "X_test.parquet")
     y_train = pd.read_parquet(input_dir / "y_train.parquet")
@@ -136,7 +136,8 @@ def write_training_outputs(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Train baseline and XGBoost models for NBA targets.")
-    parser.add_argument("--input-dir", type=Path, default=MODELLING_DIR)
+    parser.add_argument("--input-dir", type=Path, default=SPLIT_DIR)
+    parser.add_argument("--output-dir", type=Path, default=MODELLING_DIR)
     parser.add_argument("--models-dir", type=Path, default=MODELS_DIR)
     parser.add_argument("--no-export", action="store_true")
     return parser.parse_args()
@@ -152,8 +153,8 @@ def main() -> None:
     print(metrics.drop(columns=["model_path"]).round(4).to_string(index=False))
 
     if not args.no_export:
-        write_training_outputs(metrics, predictions, args.input_dir)
-        print(f"\nSaved metrics and predictions to {args.input_dir}")
+        write_training_outputs(metrics, predictions, args.output_dir)
+        print(f"\nSaved metrics and predictions to {args.output_dir}")
         print(f"Saved models to {args.models_dir}")
 
 
