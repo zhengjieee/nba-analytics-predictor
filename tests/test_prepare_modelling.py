@@ -4,15 +4,15 @@ import unittest
 
 import pandas as pd
 
-from src.modeling import (
+from src.prepare_modelling import (
     TARGET_COLUMNS,
-    prepare_modeling_data,
+    prepare_modelling_data,
     select_feature_columns,
     time_series_train_test_split,
 )
 
 
-class ModelingPrepTests(unittest.TestCase):
+class ModellingPrepTests(unittest.TestCase):
     def make_features(self) -> pd.DataFrame:
         rows = []
         dates = [
@@ -73,6 +73,8 @@ class ModelingPrepTests(unittest.TestCase):
                 "days_rest_category": "1",
                 "pts_rolling_5g_avg": 14.0 + index,
                 "fantasy_pts_rolling_5g_avg": 30.0 + index,
+                "pts_change_from_previous": 1.0,
+                "fantasy_pts_change_from_previous": 2.0,
                 "home_game": 1,
                 "away_game": 0,
                 "opponent_win_pct": 0.6,
@@ -116,11 +118,13 @@ class ModelingPrepTests(unittest.TestCase):
         self.assertNotIn("FGA", feature_columns)
         self.assertNotIn("true_shooting_pct", feature_columns)
         self.assertNotIn("PLAYER_ID", feature_columns)
+        self.assertNotIn("pts_change_from_previous", feature_columns)
+        self.assertNotIn("fantasy_pts_change_from_previous", feature_columns)
 
-    def test_prepare_modeling_data_creates_x_and_y_matrices(self) -> None:
+    def test_prepare_modelling_data_creates_x_and_y_matrices(self) -> None:
         features = self.make_features()
 
-        x_train, x_test, y_train, y_test, metadata = prepare_modeling_data(features, test_size=0.5)
+        x_train, x_test, y_train, y_test, metadata = prepare_modelling_data(features, test_size=0.5)
 
         self.assertEqual(list(y_train.columns), TARGET_COLUMNS)
         self.assertEqual(list(y_test.columns), TARGET_COLUMNS)

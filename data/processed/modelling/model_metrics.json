@@ -1,0 +1,82 @@
+[
+  {
+    "target": "FANTASY_PTS",
+    "baseline_mae": 11.7828902498059,
+    "baseline_rmse": 14.490716307790713,
+    "baseline_r2": -0.02803090722832491,
+    "xgboost_mae": 8.219899295325723,
+    "xgboost_rmse": 10.42390435454757,
+    "xgboost_r2": 0.4680298067578347,
+    "model_path": "models/xgboost_fantasy_pts.json"
+  },
+  {
+    "target": "PTS",
+    "baseline_mae": 7.2457377447494125,
+    "baseline_rmse": 8.892386111858231,
+    "baseline_r2": -0.023981830840966945,
+    "xgboost_mae": 5.062589650609307,
+    "xgboost_rmse": 6.523584072686018,
+    "xgboost_r2": 0.4489028630921492,
+    "model_path": "models/xgboost_pts.json"
+  },
+  {
+    "target": "REB",
+    "baseline_mae": 2.758013948417671,
+    "baseline_rmse": 3.434328222253314,
+    "baseline_r2": -0.027580779083412166,
+    "xgboost_mae": 2.0462784511817205,
+    "xgboost_rmse": 2.648991428911429,
+    "xgboost_r2": 0.38864498259450686,
+    "model_path": "models/xgboost_reb.json"
+  },
+  {
+    "target": "AST",
+    "baseline_mae": 2.1097799836254754,
+    "baseline_rmse": 2.7177849265377345,
+    "baseline_r2": -0.0034538813927080803,
+    "xgboost_mae": 1.4973160463532462,
+    "xgboost_rmse": 1.991220984164228,
+    "xgboost_r2": 0.4613506170549184,
+    "model_path": "models/xgboost_ast.json"
+  },
+  {
+    "target": "STL",
+    "baseline_mae": 0.7920810534378012,
+    "baseline_rmse": 1.0243885101274628,
+    "baseline_r2": -0.0006426598975479703,
+    "xgboost_mae": 0.7836513217573373,
+    "xgboost_rmse": 1.0005629120029627,
+    "xgboost_r2": 0.045362658201217876,
+    "model_path": "models/xgboost_stl.json"
+  },
+  {
+    "target": "BLK",
+    "baseline_mae": 0.6855079149890421,
+    "baseline_rmse": 0.8500695387968747,
+    "baseline_r2": -0.01038822299781006,
+    "xgboost_mae": 0.573992764450476,
+    "xgboost_rmse": 0.7775209975724919,
+    "xgboost_r2": 0.1547141090361297,
+    "model_path": "models/xgboost_blk.json"
+  },
+  {
+    "target": "TOV",
+    "baseline_mae": 1.2027230230077073,
+    "baseline_rmse": 1.4690360595903849,
+    "baseline_r2": -0.022704244004487784,
+    "xgboost_mae": 0.9656265442508307,
+    "xgboost_rmse": 1.2539689874362103,
+    "xgboost_r2": 0.2548242089042426,
+    "model_path": "models/xgboost_tov.json"
+  },
+  {
+    "target": "3PM",
+    "baseline_mae": 1.2521304141300862,
+    "baseline_rmse": 1.588546159815015,
+    "baseline_r2": -0.004841285957208674,
+    "xgboost_mae": 1.0242783979362182,
+    "xgboost_rmse": 1.3756216429685186,
+    "xgboost_r2": 0.24647824968952015,
+    "model_path": "models/xgboost_3pm.json"
+  }
+]

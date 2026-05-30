@@ -4,7 +4,7 @@ Completes the Pandas stage of the feature pipeline.
 The script first merges one-row-per-player metadata from player_info.csv onto
 the PySpark-generated player-game features, producing features_player_info.parquet.
 
-It builds the final modeling table by adding contextual, player-specific, and advanced features, 
+It builds the final modelling table by adding contextual, player-specific, and advanced features,
 then writes features_full.parquet.
 """
 

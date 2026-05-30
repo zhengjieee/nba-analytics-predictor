@@ -1,5 +1,5 @@
 """
-Prepare time-aware train/test data for modeling.
+Prepare time-aware train/test data for modelling.
 
 It loads the completed feature table, sorts games chronologically, uses
 the most recent portion of games as the test set, and separates model features
@@ -20,7 +20,7 @@ import pandas as pd
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 PROCESSED_DIR = PROJECT_ROOT / "data" / "processed"
 FEATURES_FULL_PATH = PROCESSED_DIR / "features_full.parquet"
-MODELING_DIR = PROCESSED_DIR / "modeling"
+MODELLING_DIR = PROCESSED_DIR / "modelling"
 
 TARGET_COLUMNS = ["FANTASY_PTS", "PTS", "REB", "AST", "STL", "BLK", "TOV", "3PM"]
 
@@ -73,6 +73,14 @@ SAME_GAME_RESULT_COLUMNS = [
     "effective_fg_pct",
     "three_point_attempt_rate",
     "free_throw_attempt_rate",
+    "fantasy_pts_change_from_previous",
+    "pts_change_from_previous",
+    "reb_change_from_previous",
+    "ast_change_from_previous",
+    "stl_change_from_previous",
+    "blk_change_from_previous",
+    "tov_change_from_previous",
+    "3pm_change_from_previous",
 ]
 
 
@@ -119,7 +127,11 @@ def select_feature_columns(df: pd.DataFrame) -> list[str]:
         + SAME_GAME_RESULT_COLUMNS
     )
     numeric_columns = df.select_dtypes(include=["number", "bool"]).columns
-    return [column for column in numeric_columns if column not in excluded_columns]
+    return [
+        column
+        for column in numeric_columns
+        if column not in excluded_columns
+    ]
 
 
 def create_feature_target_matrices(
@@ -140,7 +152,7 @@ def create_feature_target_matrices(
     return x_train, x_test, y_train, y_test, feature_columns
 
 
-def prepare_modeling_data(
+def prepare_modelling_data(
     features: pd.DataFrame,
     test_size: float = 0.2,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, object]]:
@@ -162,13 +174,13 @@ def prepare_modeling_data(
     return x_train, x_test, y_train, y_test, metadata
 
 
-def write_modeling_data(
+def write_modelling_data(
     x_train: pd.DataFrame,
     x_test: pd.DataFrame,
     y_train: pd.DataFrame,
     y_test: pd.DataFrame,
     metadata: dict[str, object],
-    output_dir: Path = MODELING_DIR,
+    output_dir: Path = MODELLING_DIR,
 ) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     x_train.to_parquet(output_dir / "X_train.parquet", index=False)
@@ -180,9 +192,9 @@ def write_modeling_data(
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare time-aware train/test matrices for modeling.")
+    parser = argparse.ArgumentParser(description="Prepare time-aware train/test matrices for modelling.")
     parser.add_argument("--features", type=Path, default=FEATURES_FULL_PATH)
-    parser.add_argument("--output-dir", type=Path, default=MODELING_DIR)
+    parser.add_argument("--output-dir", type=Path, default=MODELLING_DIR)
     parser.add_argument("--test-size", type=float, default=0.2)
     parser.add_argument("--no-export", action="store_true")
     return parser.parse_args()
@@ -191,9 +203,9 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     features = load_completed_features(args.features)
-    x_train, x_test, y_train, y_test, metadata = prepare_modeling_data(features, test_size=args.test_size)
+    x_train, x_test, y_train, y_test, metadata = prepare_modelling_data(features, test_size=args.test_size)
 
-    print("Modeling Data Split")
+    print("Modelling Data Split")
     print("-------------------")
     print(f"Train rows: {metadata['train_rows']:,}")
     print(f"Test rows: {metadata['test_rows']:,}")
@@ -203,8 +215,8 @@ def main() -> None:
     print(f"Test date range: {metadata['test_start_date']} to {metadata['test_end_date']}")
 
     if not args.no_export:
-        write_modeling_data(x_train, x_test, y_train, y_test, metadata, args.output_dir)
-        print(f"\nSaved modeling matrices to {args.output_dir}")
+        write_modelling_data(x_train, x_test, y_train, y_test, metadata, args.output_dir)
+        print(f"\nSaved modelling matrices to {args.output_dir}")
 
 
 if __name__ == "__main__":
