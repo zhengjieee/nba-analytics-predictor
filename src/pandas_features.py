@@ -1,10 +1,11 @@
 """
-Complete Pandas-based feature enrichment after PySpark processing.
+Completes the Pandas stage of the feature pipeline.
 
-This module starts from the PySpark-generated player-game feature table, merges
-player metadata, adds contextual matchup features, derives model-ready player
-attributes, computes advanced box-score metrics, validates row alignment, and
-writes the full processed feature table.
+The script first merges one-row-per-player metadata from player_info.csv onto
+the PySpark-generated player-game features, producing features_player_info.parquet.
+
+It builds the final modeling table by adding contextual, player-specific, and advanced features, 
+then writes features_full.parquet.
 """
 
 from __future__ import annotations
