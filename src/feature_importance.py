@@ -23,8 +23,9 @@ if str(PROJECT_ROOT) not in sys.path:
 from src.prepare_modelling import MODELLING_DIR, SPLIT_DIR, TARGET_COLUMNS
 from src.train_models import MODELS_DIR, PRIMARY_TARGET
 
-IMPORTANCE_OUTPUT_PATH = MODELLING_DIR / "feature_importance.json"
-SUMMARY_OUTPUT_PATH = MODELLING_DIR / "feature_importance_summary.md"
+IMPORTANCE_DIR = MODELLING_DIR / "xgboost" / "feature_importance"
+IMPORTANCE_OUTPUT_PATH = IMPORTANCE_DIR / "importance_scores.json"
+SUMMARY_OUTPUT_PATH = IMPORTANCE_DIR / "importance_summary.md"
 
 TIME_SERIES_MARKERS = (
     "_rolling_",
@@ -131,6 +132,8 @@ def write_feature_importance_json(
     family_summary: pd.DataFrame,
     output_path: Path = IMPORTANCE_OUTPUT_PATH,
 ) -> None:
+    # This highlights the most important inputs for the project's primary target.
+    # The full feature ranking for every target is still kept in all_importance.
     output = {
         "importance_type": "gain",
         "top_20_fantasy_points": importance[

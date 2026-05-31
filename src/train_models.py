@@ -26,8 +26,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from src.prepare_modelling import MODELLING_DIR, SPLIT_DIR, TARGET_COLUMNS
 
-MODELS_DIR = PROJECT_ROOT / "models"
-TEST_PREDICTIONS_DIR = MODELLING_DIR / "test_predictions"
+MODELS_DIR = PROJECT_ROOT / "models" / "xgboost"
+TEST_PREDICTIONS_DIR = MODELLING_DIR / "xgboost" / "test_predictions"
 PRIMARY_TARGET = "FANTASY_PTS"
 
 

@@ -7,7 +7,7 @@
     "xgboost_mae": 8.219899295325723,
     "xgboost_rmse": 10.42390435454757,
     "xgboost_r2": 0.4680298067578347,
-    "model_path": "models/xgboost_fantasy_pts.json"
+    "model_path": "models/xgboost/xgboost_fantasy_pts.json"
   },
   {
     "target": "PTS",
@@ -17,7 +17,7 @@
     "xgboost_mae": 5.062589650609307,
     "xgboost_rmse": 6.523584072686018,
     "xgboost_r2": 0.4489028630921492,
-    "model_path": "models/xgboost_pts.json"
+    "model_path": "models/xgboost/xgboost_pts.json"
   },
   {
     "target": "REB",
@@ -27,7 +27,7 @@
     "xgboost_mae": 2.0462784511817205,
     "xgboost_rmse": 2.648991428911429,
     "xgboost_r2": 0.38864498259450686,
-    "model_path": "models/xgboost_reb.json"
+    "model_path": "models/xgboost/xgboost_reb.json"
   },
   {
     "target": "AST",
@@ -37,7 +37,7 @@
     "xgboost_mae": 1.4973160463532462,
     "xgboost_rmse": 1.991220984164228,
     "xgboost_r2": 0.4613506170549184,
-    "model_path": "models/xgboost_ast.json"
+    "model_path": "models/xgboost/xgboost_ast.json"
   },
   {
     "target": "STL",
@@ -47,7 +47,7 @@
     "xgboost_mae": 0.7836513217573373,
     "xgboost_rmse": 1.0005629120029627,
     "xgboost_r2": 0.045362658201217876,
-    "model_path": "models/xgboost_stl.json"
+    "model_path": "models/xgboost/xgboost_stl.json"
   },
   {
     "target": "BLK",
@@ -57,7 +57,7 @@
     "xgboost_mae": 0.573992764450476,
     "xgboost_rmse": 0.7775209975724919,
     "xgboost_r2": 0.1547141090361297,
-    "model_path": "models/xgboost_blk.json"
+    "model_path": "models/xgboost/xgboost_blk.json"
   },
   {
     "target": "TOV",
@@ -67,7 +67,7 @@
     "xgboost_mae": 0.9656265442508307,
     "xgboost_rmse": 1.2539689874362103,
     "xgboost_r2": 0.2548242089042426,
-    "model_path": "models/xgboost_tov.json"
+    "model_path": "models/xgboost/xgboost_tov.json"
   },
   {
     "target": "3PM",
@@ -77,6 +77,6 @@
     "xgboost_mae": 1.0242783979362182,
     "xgboost_rmse": 1.3756216429685186,
     "xgboost_r2": 0.24647824968952015,
-    "model_path": "models/xgboost_3pm.json"
+    "model_path": "models/xgboost/xgboost_3pm.json"
   }
 ]
