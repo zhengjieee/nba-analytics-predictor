@@ -1,9 +1,9 @@
 """
-Analyse feature importance from the trained XGBoost models.
+Analyse feature importance from trained tree-based models.
 
 This script reads the saved models for all eight targets, extracts gain-based
-importance scores, groups features into broad families, and examines
-whether time-series features are driving the models.
+importance scores, groups features into broad families, and examines whether
+time-series features are driving the models.
 """
 
 from __future__ import annotations
@@ -21,11 +21,11 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from src.prepare_modelling import MODELLING_DIR, SPLIT_DIR, TARGET_COLUMNS
-from src.train_models import MODELS_DIR, PRIMARY_TARGET
+from src.train_models import DEFAULT_MODEL_NAME, MODEL_CONFIGS, ModelConfig, get_model_config, model_path_for_target, PRIMARY_TARGET
 
-IMPORTANCE_DIR = MODELLING_DIR / "xgboost" / "feature_importance"
-IMPORTANCE_OUTPUT_PATH = IMPORTANCE_DIR / "importance_scores.json"
-SUMMARY_OUTPUT_PATH = IMPORTANCE_DIR / "importance_summary.md"
+DEFAULT_IMPORTANCE_DIR = MODELLING_DIR / DEFAULT_MODEL_NAME / "feature_importance"
+IMPORTANCE_OUTPUT_PATH = DEFAULT_IMPORTANCE_DIR / "importance_scores.json"
+SUMMARY_OUTPUT_PATH = DEFAULT_IMPORTANCE_DIR / "importance_summary.md"
 
 TIME_SERIES_MARKERS = (
     "_rolling_",
@@ -69,8 +69,8 @@ def classify_feature_family(feature: str) -> str:
     return "other"
 
 
-def model_path_for_target(target: str, models_dir: Path = MODELS_DIR) -> Path:
-    return models_dir / f"xgboost_{target.lower()}.json"
+def importance_dir_for_model(config: ModelConfig) -> Path:
+    return MODELLING_DIR / config.name / "feature_importance"
 
 
 def load_feature_columns(split_metadata_path: Path = SPLIT_DIR / "split_metadata.json") -> list[str]:
@@ -79,32 +79,46 @@ def load_feature_columns(split_metadata_path: Path = SPLIT_DIR / "split_metadata
     return list(metadata["feature_columns"])
 
 
-def load_xgboost_gain_scores(model_path: Path) -> dict[str, float]:
-    from xgboost import XGBRegressor
+def load_gain_scores(model_path: Path, config: ModelConfig) -> dict[str, float]:
+    if config.name == "xgboost":
+        from xgboost import XGBRegressor
 
-    model = XGBRegressor()
-    model.load_model(model_path)
-    return {feature: float(score) for feature, score in model.get_booster().get_score(importance_type="gain").items()}
+        model = XGBRegressor()
+        model.load_model(model_path)
+        return {feature: float(score) for feature, score in model.get_booster().get_score(importance_type="gain").items()}
+
+    if config.name == "lightgbm":
+        import lightgbm as lgb
+
+        booster = lgb.Booster(model_file=str(model_path))
+        names = booster.feature_name()
+        gains = booster.feature_importance(importance_type="gain")
+        return {feature: float(gain) for feature, gain in zip(names, gains)}
+
+    raise ValueError(f"Unsupported model for feature importance: {config.name}")
 
 
 def build_feature_importance_table(
     feature_columns: list[str],
     targets: list[str] = TARGET_COLUMNS,
-    models_dir: Path = MODELS_DIR,
+    config: ModelConfig | None = None,
+    models_dir: Path | None = None,
 ) -> pd.DataFrame:
+    model_config = MODEL_CONFIGS[DEFAULT_MODEL_NAME] if config is None else config
     rows = []
     for target in targets:
-        model_path = model_path_for_target(target, models_dir=models_dir)
+        model_path = model_path_for_target(target, model_config, models_dir=models_dir)
         if not model_path.exists():
             raise FileNotFoundError(f"Missing model for {target}: {model_path}")
 
-        gain_scores = load_xgboost_gain_scores(model_path)
+        gain_scores = load_gain_scores(model_path, model_config)
         total_gain = sum(gain_scores.values())
 
         for feature in feature_columns:
             gain = gain_scores.get(feature, 0.0)
             rows.append(
                 {
+                    "model": model_config.name,
                     "target": target,
                     "feature": feature,
                     "feature_family": classify_feature_family(feature),
@@ -120,7 +134,7 @@ def build_feature_importance_table(
 
 def summarize_feature_families(importance: pd.DataFrame) -> pd.DataFrame:
     summary = (
-        importance.groupby(["target", "feature_family"], as_index=False)["gain_share"]
+        importance.groupby(["model", "target", "feature_family"], as_index=False)["gain_share"]
         .sum()
         .sort_values(["target", "gain_share"], ascending=[True, False])
     )
@@ -136,6 +150,7 @@ def write_feature_importance_json(
     # The full feature ranking for every target is still kept in all_importance.
     output = {
         "importance_type": "gain",
+        "model": str(importance["model"].iloc[0]) if not importance.empty else None,
         "top_20_fantasy_points": importance[
             (importance["target"] == PRIMARY_TARGET) & (importance["rank"] <= 20)
         ].to_dict(orient="records"),
@@ -151,6 +166,10 @@ def format_pct(value: float) -> str:
     return f"{value * 100:.1f}%"
 
 
+def model_label(config: ModelConfig) -> str:
+    return "XGBoost" if config.name == "xgboost" else "LightGBM"
+
+
 def markdown_table(headers: list[str], rows: list[list[object]]) -> str:
     lines = [
         "| " + " | ".join(headers) + " |",
@@ -161,7 +180,7 @@ def markdown_table(headers: list[str], rows: list[list[object]]) -> str:
     return "\n".join(lines)
 
 
-def build_summary_markdown(importance: pd.DataFrame, family_summary: pd.DataFrame) -> str:
+def build_summary_markdown(importance: pd.DataFrame, family_summary: pd.DataFrame, config: ModelConfig) -> str:
     fantasy_top_20 = importance[(importance["target"] == PRIMARY_TARGET) & (importance["rank"] <= 20)]
     family_pivot = (
         family_summary.pivot(index="target", columns="feature_family", values="gain_share")
@@ -196,10 +215,11 @@ def build_summary_markdown(importance: pd.DataFrame, family_summary: pd.DataFram
             ]
         )
 
+    label = model_label(config)
     lines = [
-        "# Feature Importance Summary",
+        f"# {label} Feature Importance Summary",
         "",
-        "This summary uses XGBoost gain importance from the saved default models. Gain measures how much a feature improves tree splits when it is used, so larger values mean the model relied on that feature more.",
+        f"This summary uses {label} gain importance from the saved default models. Gain measures how much a feature improves tree splits when it is used, so larger values mean the model relied on that feature more.",
         "",
         "## Top 20 Fantasy Points Features",
         "",
@@ -218,7 +238,7 @@ def build_summary_markdown(importance: pd.DataFrame, family_summary: pd.DataFram
         "",
         f"The strongest time-series reliance is for `{strongest_time_series_target.target}` at {format_pct(strongest_time_series_target.time_series)} of gain importance. The weakest is `{weakest_time_series_target.target}` at {format_pct(weakest_time_series_target.time_series)}, which suggests that some targets depend more on context, player profile, or noisy game-level variation.",
         "",
-        "Fantasy points importance is useful as the main portfolio signal because it combines several box-score outcomes. If its top features are mostly recent-form or history features, that validates the project design: the model is learning from a player's recent and longer-term performance rather than from same-game leakage columns.",
+        "Fantasy points is the main target for this project, so its feature importance is the most useful one to review. If its top features are mostly recent-form or history features, that validates the project design: the model is learning from a player's recent and longer-term performance rather than from same-game leakage columns.",
         "",
         "Importance scores should be treated as model diagnostics, not causal explanations. Correlated rolling features can share importance unevenly, so the ranking is best read as a directional view of what the model found useful.",
     ]
@@ -228,30 +248,38 @@ def build_summary_markdown(importance: pd.DataFrame, family_summary: pd.DataFram
 def write_summary_markdown(
     importance: pd.DataFrame,
     family_summary: pd.DataFrame,
+    config: ModelConfig,
     output_path: Path = SUMMARY_OUTPUT_PATH,
 ) -> None:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(build_summary_markdown(importance, family_summary), encoding="utf-8")
+    output_path.write_text(build_summary_markdown(importance, family_summary, config), encoding="utf-8")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Analyze feature importance from saved XGBoost models.")
+    parser = argparse.ArgumentParser(description="Analyze feature importance from saved tree-based models.")
+    parser.add_argument("--model", choices=sorted(MODEL_CONFIGS), default=DEFAULT_MODEL_NAME)
     parser.add_argument("--split-metadata", type=Path, default=SPLIT_DIR / "split_metadata.json")
-    parser.add_argument("--models-dir", type=Path, default=MODELS_DIR)
-    parser.add_argument("--output-json", type=Path, default=IMPORTANCE_OUTPUT_PATH)
-    parser.add_argument("--output-summary", type=Path, default=SUMMARY_OUTPUT_PATH)
+    parser.add_argument("--models-dir", type=Path)
+    parser.add_argument("--output-json", type=Path)
+    parser.add_argument("--output-summary", type=Path)
     parser.add_argument("--no-export", action="store_true")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    config = get_model_config(args.model)
+    models_dir = config.models_dir if args.models_dir is None else args.models_dir
+    importance_dir = importance_dir_for_model(config)
+    output_json = importance_dir / "importance_scores.json" if args.output_json is None else args.output_json
+    output_summary = importance_dir / "importance_summary.md" if args.output_summary is None else args.output_summary
+
     feature_columns = load_feature_columns(args.split_metadata)
-    importance = build_feature_importance_table(feature_columns, models_dir=args.models_dir)
+    importance = build_feature_importance_table(feature_columns, config=config, models_dir=models_dir)
     family_summary = summarize_feature_families(importance)
 
-    print("Feature Importance")
-    print("------------------")
+    print(f"{model_label(config)} Feature Importance")
+    print("--------------------------")
     print("Top 20 fantasy-points features:")
     print(
         importance[(importance["target"] == PRIMARY_TARGET) & (importance["rank"] <= 20)][
@@ -270,10 +298,10 @@ def main() -> None:
     )
 
     if not args.no_export:
-        write_feature_importance_json(importance, family_summary, args.output_json)
-        write_summary_markdown(importance, family_summary, args.output_summary)
-        print(f"\nSaved feature importance to {args.output_json}")
-        print(f"Saved feature importance summary to {args.output_summary}")
+        write_feature_importance_json(importance, family_summary, output_json)
+        write_summary_markdown(importance, family_summary, config, output_summary)
+        print(f"\nSaved feature importance to {output_json}")
+        print(f"Saved feature importance summary to {output_summary}")
 
 
 if __name__ == "__main__":

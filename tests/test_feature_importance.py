@@ -4,7 +4,8 @@ import unittest
 
 import pandas as pd
 
-from src.feature_importance import classify_feature_family, summarize_feature_families
+from src.feature_importance import classify_feature_family, importance_dir_for_model, summarize_feature_families
+from src.train_models import get_model_config
 
 
 class FeatureImportanceTests(unittest.TestCase):
@@ -24,6 +25,7 @@ class FeatureImportanceTests(unittest.TestCase):
                 {"target": "PTS", "feature_family": "other", "gain_share": 0.1},
             ]
         )
+        importance["model"] = "xgboost"
 
         summary = summarize_feature_families(importance)
 
@@ -32,6 +34,13 @@ class FeatureImportanceTests(unittest.TestCase):
             "gain_share",
         ].iloc[0]
         self.assertAlmostEqual(time_series_share, 0.7)
+
+    def test_importance_dir_uses_model_name(self) -> None:
+        config = get_model_config("lightgbm")
+
+        importance_dir = importance_dir_for_model(config)
+
+        self.assertTrue(str(importance_dir).endswith("modelling/lightgbm/feature_importance"))
 
 
 if __name__ == "__main__":
