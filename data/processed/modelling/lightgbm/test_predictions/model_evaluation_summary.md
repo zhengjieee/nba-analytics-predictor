@@ -7,6 +7,7 @@ This summarises the default LightGBM models trained for the eight prediction tar
 ### MAE
 
 | Target | Baseline MAE | LightGBM MAE | MAE Improvement |
+| --- | ---: | ---: | ---: |
 | FANTASY_PTS | 11.783 | 8.068 | 3.715 |
 | PTS | 7.246 | 4.963 | 2.283 |
 | REB | 2.758 | 2.001 | 0.757 |
@@ -19,6 +20,7 @@ This summarises the default LightGBM models trained for the eight prediction tar
 ### RMSE
 
 | Target | Baseline RMSE | LightGBM RMSE | RMSE Improvement |
+| --- | ---: | ---: | ---: |
 | FANTASY_PTS | 14.491 | 10.228 | 4.263 |
 | PTS | 8.892 | 6.398 | 2.494 |
 | REB | 3.434 | 2.592 | 0.842 |
@@ -31,6 +33,7 @@ This summarises the default LightGBM models trained for the eight prediction tar
 ### R2
 
 | Target | Baseline R2 | LightGBM R2 | R2 Improvement |
+| --- | ---: | ---: | ---: |
 | FANTASY_PTS | -0.028 | 0.488 | 0.516 |
 | PTS | -0.024 | 0.470 | 0.494 |
 | REB | -0.028 | 0.415 | 0.442 |

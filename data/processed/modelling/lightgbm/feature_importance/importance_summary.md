@@ -5,6 +5,7 @@ This summary uses LightGBM gain importance from the saved default models. Gain m
 ## Top 20 Fantasy Points Features
 
 | Rank | Feature | Feature Family | Gain Share |
+| --- | --- | --- | --- |
 | 1 | fantasy_pts_rolling_20g_avg | time_series | 65.3% |
 | 2 | fantasy_pts_rolling_10g_avg | time_series | 21.5% |
 | 3 | fantasy_pts_rolling_5g_avg | time_series | 4.1% |
@@ -29,6 +30,7 @@ This summary uses LightGBM gain importance from the saved default models. Gain m
 ## Feature Family Share By Target
 
 | Target | Time-Series | Contextual | Player-Specific | Other |
+| --- | --- | --- | --- | --- |
 | 3PM | 97.3% | 1.4% | 1.3% | 0.0% |
 | AST | 98.4% | 1.0% | 0.6% | 0.0% |
 | BLK | 92.7% | 3.7% | 3.6% | 0.0% |

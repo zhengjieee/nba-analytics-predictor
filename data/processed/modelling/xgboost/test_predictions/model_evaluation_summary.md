@@ -7,6 +7,7 @@ This summarises the default XGBoost models trained for the eight prediction targ
 ### MAE
 
 | Target | Baseline MAE | XGBoost MAE | MAE Improvement |
+| --- | ---: | ---: | ---: |
 | FANTASY_PTS | 11.783 | 8.220 | 3.563 |
 | PTS | 7.246 | 5.063 | 2.183 |
 | REB | 2.758 | 2.046 | 0.712 |
@@ -19,6 +20,7 @@ This summarises the default XGBoost models trained for the eight prediction targ
 ### RMSE
 
 | Target | Baseline RMSE | XGBoost RMSE | RMSE Improvement |
+| --- | ---: | ---: | ---: |
 | FANTASY_PTS | 14.491 | 10.424 | 4.067 |
 | PTS | 8.892 | 6.524 | 2.369 |
 | REB | 3.434 | 2.649 | 0.785 |
@@ -31,6 +33,7 @@ This summarises the default XGBoost models trained for the eight prediction targ
 ### R2
 
 | Target | Baseline R2 | XGBoost R2 | R2 Improvement |
+| --- | ---: | ---: | ---: |
 | FANTASY_PTS | -0.028 | 0.468 | 0.496 |
 | PTS | -0.024 | 0.449 | 0.473 |
 | REB | -0.028 | 0.389 | 0.416 |

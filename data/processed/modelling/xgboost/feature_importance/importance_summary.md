@@ -5,6 +5,7 @@ This summary uses XGBoost gain importance from the saved default models. Gain me
 ## Top 20 Fantasy Points Features
 
 | Rank | Feature | Feature Family | Gain Share |
+| --- | --- | --- | --- |
 | 1 | fantasy_pts_rolling_20g_avg | time_series | 50.9% |
 | 2 | fantasy_pts_rolling_10g_avg | time_series | 16.8% |
 | 3 | fantasy_pts_rolling_5g_avg | time_series | 1.6% |
@@ -29,6 +30,7 @@ This summary uses XGBoost gain importance from the saved default models. Gain me
 ## Feature Family Share By Target
 
 | Target | Time-Series | Contextual | Player-Specific | Other |
+| --- | --- | --- | --- | --- |
 | 3PM | 89.3% | 2.7% | 8.0% | 0.0% |
 | AST | 93.5% | 2.1% | 4.5% | 0.0% |
 | BLK | 87.4% | 3.9% | 8.7% | 0.0% |
